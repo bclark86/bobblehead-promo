@@ -37,6 +37,8 @@ The marketing group likes to use giveaways to drive fan engagement and satisfact
 
 Dataset is from the [Marketing Science](http://www.informit.com/promotions/modeling-techniques-in-predictive-analytics-with-python-141177) book by Thomas Miller. 
 
+For fun, bootstrap regression for the NY Mets and addition teams is available in the Rmarkdown file. Only the LA Dodgers show a measurable impact for bobbleheads when controlling for day of week, month, and daytime of the game. 
+
 ## Executive Summary
 
 While we do see an increase in attendance for games with promotions, when controlling for month and day of week, we do not see a statistically meaningful effect on attendance due to promotion. While this means that promotions may not necessarily drive an increase in attendance, we can say that it shows we did a good job at selecting games in which to have promotions since attendance was generally higher for those games. More fans receiving a promotion will have a better ROI on engagement for the promotion compared to if we had selected games with generally lower attendance. More data is needed to validate if our efforts led to an increasee in fan experience and engagement metrics. 
@@ -443,3 +445,209 @@ We could explore additonal interactions, but our sample size is fairly small and
 The takeaway from this is that we were not able to detect an increase in attendance for games with promotions compared to games without promotions, when controlling for month, day of week, and time of the games. 
 
 That said, there was a statistically meaningful increase in attendance for games with promotions, so we did select good games to run a promotion to impact customer satisfaction and engagement. We would need additional data to validate if satisfaction was higher due to our efforts, but the positive takeaway is that productive games were chosen to run promotions. If we ran promotions on games with a lower on average attendance, then we would get a reduced potential ROI on our engagement investment as it would have been made on a smaller number of fans. 
+
+## Part 2: Bootstrap Resampling
+```{r}
+# set value for number of bootstrap samples to run
+bootstrap_n <- 2500
+```
+
+As an extension of the problem above, we can further evaluate the uncertainty of the effect of promotions by bootsrapping our dataset, fitting the model to each bootstrap resample, and then evaluating the distribution of the promotion coefficient. 
+
+First we create `r bootstrap_n` bootstrap resamples of our dataset while accounting for the ratio of promotional games. The bootstrap function from resample also creates an analysis (training) and assessment (test) split for each bootstrap resample. 
+
+```{r}
+set.seed(420)
+# bootstrap the data to understand the uncertainty of our assessment
+bt_games_tbl <- bootstraps(games_tbl, times = bootstrap_n, strata = "promotion")
+```
+
+Next we will create functions to apply to each resample. The first function fits a model to the analysis split and then returns predictions for the assessment split. The second function returns the beta coefficients for each model. 
+
+```{r}
+# obtains predictions for each bootstrap split
+# splits will be the `rsplit` object with the 90/10 partition
+holdout_results <- function(splits, ...) {
+  # Fit the model to the 90%
+  mod <- lm(..., data = analysis(splits))
+  # Save the 10%
+  holdout <- assessment(splits)
+  # `augment` will save the predictions with the holdout data set
+  res <- broom::augment(mod, newdata = holdout)
+  # Return the assessment data set
+  res
+}
+
+# obtains model coefficients for each bootstrap split
+lm_coefs <- function(splits, ...) {
+  ## use `analysis` or `as.data.frame` to get the analysis data
+  mod <- lm(..., data = analysis(splits))
+  
+  mod_coef <- as.tibble(t(coef(mod)))
+  
+  mod_coef
+}
+```
+
+Now we can apply the function to generate model coefficients for each bootstrap. 
+
+```{r}
+# apply coefficient function
+bt_games_tbl$betas <- map(.x = bt_games_tbl$splits, 
+                          .f = lm_coefs, 
+                          mod_form)
+```
+
+And return the predictions on the holdout set. 
+
+```{r}
+# apply holdout function
+bt_games_tbl$resid <- map(.x = bt_games_tbl$splits, 
+                          .f = holdout_results, 
+                          mod_form)
+```
+
+Then we can evaluate the distribution of the model coefficients. In this we see that the 95% confidence interval contains 0, so the predictor for our model is not statistically signficant. The average effect of promotions on attendance for our bootstrapped models is about -1000 tickets (similar to our single model fit on the original dataset)
+
+```{r plot_mets_promo_coef}
+# unnest model coefficients for promotion
+bt_promo_coef <- bt_games_tbl %>% 
+  select(betas) %>% 
+  unnest() %>% 
+  select(promotionYES)
+
+# get percentile-based confidence interval for 1000 samples
+promo_ci <- bt_promo_coef %>%
+  pull() %>%
+  quantile(., probs = c(0.025, 0.500, 0.975))
+
+mean_promo <- mean(bt_promo_coef$promotionYES) %>% round(0)
+
+# plot coefficient distribution and CIs
+bt_promo_coef %>%
+  ggplot(aes(x = promotionYES)) +
+  geom_histogram(bins = 30, color = "black", fill = "grey") +
+  geom_vline(xintercept = promo_ci[[1]], color = "red", linetype = "dashed") +
+  #geom_vline(xintercept = promo_ci[[2]], color = "black", linetype = "dashed") +
+  geom_vline(xintercept = promo_ci[[3]], color = "red", linetype = "dashed") +
+  labs(
+    title = "Promotion vs. No Promotion Bootstrap Effect Distribution",
+    subtitle = glue("{bootstrap_n} bootstrap trials average promotional effect: {mean_promo} tickets"),
+    x = "Promotion Effect on Attendance",
+    y = "Trials",
+    caption = "Source: Bootstrapped Data"
+  )
+```
+
+We can also check our coefficient distribution to see the probability that the promotional effect is greater than 0. 
+
+```{r}
+p_val <- bt_promo_coef %>%
+  summarise(p_positive = mean(promotionYES > 0)) %>%
+  pull()
+
+print(p_val)
+```
+
+The result shows about `r (p_val * 100) %>% round(0)`% chance that promotions have a positive influence on game attendance, after controlling for month, day of week, and daytime of the game.
+
+## Part 3: Extend Bootstrap Regression to Multiple Teams
+
+The code below filters teams that have promotions for at least 15 games and map the linear model to their bootstrapped resamples. Lastly, the plots of the promotion model coefficient are plotted. 
+
+```{r}
+# create factor levels and convert data
+month_levels <- c(
+  "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT"
+)
+
+day_levels <- c(
+  "Monday", "Tuesday", "Wednesday", "Thursday",
+  "Friday", "Saturday", "Sunday"
+)
+
+# create filter for teams with at least 15 promotions during the season
+teams_filter <- games_all_teams %>%
+  group_by(home_team) %>%
+  filter(cap == "YES" | shirt == "YES" | bobblehead == "YES") %>%
+  count() %>%
+  filter(n >= 15) %>%
+  pull(home_team)
+
+games_all_tbl <- games_all_teams %>%
+  filter(home_team %in% teams_filter) %>%
+  mutate_if(is.character, as.factor) %>%
+  mutate(
+    month = month %>% fct_relevel(month_levels),
+    day_of_week = day_of_week %>% fct_relevel(day_levels),
+    promotion = ifelse(cap == "YES" | shirt == "YES" | bobblehead == "YES", "YES", "NO"),
+    promotion = promotion %>% as_factor()
+    ) %>%
+  select(home_team, month, day_of_week, day_night, promotion, attend)
+```
+
+```{r}
+set.seed(420)
+# set number of bootstrap samples
+bootstrap_n = 2500
+
+# bootstrap resample data for each team in filtered dataset
+bt_all_teams <- games_all_tbl %>%
+  group_by(home_team) %>%
+  do(bootstraps(., times = bootstrap_n, strata = "promotion"))
+```
+
+```{r}
+bt_all_teams$betas <- map(.x = bt_all_teams$splits, 
+                          .f = lm_coefs, 
+                          mod_form)
+```
+
+
+```{r}
+plot_promo_dist <- function(bt_data) {
+  
+  team <- bt_data$home_team %>% unique()
+  
+  # unnest model coefficients for promotion
+  bt_promo_coef <- bt_data %>% 
+    select(betas) %>% 
+    unnest() %>%
+    select(promotionYES) %>%
+    drop_na()
+  
+  # get percentile-based confidence interval for 1000 samples
+  promo_ci <- bt_promo_coef %>%
+    pull() %>%
+    quantile(., probs = c(0.025, 0.500, 0.975))
+  
+  mean_promo <- mean(bt_promo_coef$promotionYES) %>% round(0)
+  
+  # plot coefficient distribution and CIs
+  p <- bt_promo_coef %>%
+    ggplot(aes(x = promotionYES)) +
+    geom_histogram(bins = 30, color = "black", fill = "grey") +
+    geom_vline(xintercept = promo_ci[[1]], color = "red", linetype = "dashed") +
+    #geom_vline(xintercept = promo_ci[[2]], color = "black", linetype = "dashed") +
+    geom_vline(xintercept = promo_ci[[3]], color = "red", linetype = "dashed") +
+    labs(
+      title = glue("{team} - Bootstrap Promotion Effect Distribution"),
+      subtitle = glue("{bootstrap_n} bootstrap trials average promotional effect: {mean_promo} tickets"),
+      x = "Promotion Effect on Attendance",
+      y = "Trials",
+      caption = "Source: Bootstrapped Data"
+    )
+  
+  return(p)
+}
+```
+
+```{r plot_all_teams_promo_coef}
+for (t in as.character(teams_filter)) {
+  bt_all_teams %>%
+    ungroup() %>%
+    filter(home_team == t) %>%
+    plot_promo_dist() %>%
+    print()
+}
+```
