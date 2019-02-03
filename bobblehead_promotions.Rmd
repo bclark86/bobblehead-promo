@@ -424,7 +424,7 @@ As a simple first step, we will contruct a regression model using month, day of 
 Unfortunately, we do not see a statistically meaninful signal being detected for promotions on attendane. 
 
 ```{r}
-# log transform attendance and create regression model/summary
+# create regression model/summary
 mod_form <- as.formula(attend ~ month + day_of_week + day_night + promotion)
 full_mod <- lm(mod_form, data = games_tbl)
 summary(full_mod)

@@ -704,7 +704,7 @@ p_val <- null_distn %>%
 p_val
 ```
 
-    ## [1] 0.0198
+    ## [1] 0.0172
 
 As a simple first step, we will contruct a regression model using month,
 day of week, day time, and promotion as predictors. We can use the
@@ -720,8 +720,8 @@ Unfortunately, we do not see a statistically meaninful signal being
 detected for promotions on attendane.
 
 ``` r
-# log transform attendance and create regression model/summary
-mod_form <- as.formula(log(attend) ~ month + day_of_week + day_night + promotion)
+# create regression model/summary
+mod_form <- as.formula(attend ~ month + day_of_week + day_night + promotion)
 full_mod <- lm(mod_form, data = games_tbl)
 summary(full_mod)
 ```
@@ -731,31 +731,31 @@ summary(full_mod)
     ## lm(formula = mod_form, data = games_tbl)
     ## 
     ## Residuals:
-    ##      Min       1Q   Median       3Q      Max 
-    ## -0.33998 -0.08731  0.00860  0.05574  0.37139 
+    ##     Min      1Q  Median      3Q     Max 
+    ## -9378.3 -2349.0    60.6  1557.7 12041.7 
     ## 
     ## Coefficients:
     ##                      Estimate Std. Error t value Pr(>|t|)    
-    ## (Intercept)          10.19680    0.07275 140.167   <2e-16 ***
-    ## monthMAY             -0.03361    0.06350  -0.529   0.5984    
-    ## monthJUN              0.18663    0.07444   2.507   0.0146 *  
-    ## monthJUL              0.09102    0.06505   1.399   0.1664    
-    ## monthAUG             -0.05315    0.06447  -0.824   0.4127    
-    ## monthSEP             -0.13081    0.06127  -2.135   0.0365 *  
-    ## day_of_weekTuesday    0.16292    0.07089   2.298   0.0247 *  
-    ## day_of_weekWednesday  0.07149    0.06682   1.070   0.2886    
-    ## day_of_weekThursday   0.07913    0.07575   1.045   0.3000    
-    ## day_of_weekFriday     0.14917    0.06729   2.217   0.0301 *  
-    ## day_of_weekSaturday   0.17136    0.07892   2.171   0.0335 *  
-    ## day_of_weekSunday     0.08087    0.07553   1.071   0.2882    
-    ## day_nightNight       -0.11483    0.05143  -2.233   0.0290 *  
-    ## promotionYES         -0.04842    0.05959  -0.812   0.4194    
+    ## (Intercept)             27388       2204  12.427   <2e-16 ***
+    ## monthMAY                -1593       1924  -0.828   0.4106    
+    ## monthJUN                 5037       2255   2.234   0.0289 *  
+    ## monthJUL                 2182       1971   1.107   0.2722    
+    ## monthAUG                -2188       1953  -1.120   0.2666    
+    ## monthSEP                -3988       1856  -2.148   0.0354 *  
+    ## day_of_weekTuesday       4603       2148   2.143   0.0358 *  
+    ## day_of_weekWednesday     2080       2024   1.027   0.3079    
+    ## day_of_weekThursday      2651       2295   1.155   0.2522    
+    ## day_of_weekFriday        3941       2038   1.933   0.0575 .  
+    ## day_of_weekSaturday      4770       2391   1.995   0.0502 .  
+    ## day_of_weekSunday        2391       2288   1.045   0.2998    
+    ## day_nightNight          -2914       1558  -1.871   0.0658 .  
+    ## promotionYES            -1003       1805  -0.555   0.5805    
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 0.1579 on 66 degrees of freedom
-    ## Multiple R-squared:  0.4361, Adjusted R-squared:  0.325 
-    ## F-statistic: 3.926 on 13 and 66 DF,  p-value: 0.0001046
+    ## Residual standard error: 4782 on 66 degrees of freedom
+    ## Multiple R-squared:  0.4056, Adjusted R-squared:  0.2885 
+    ## F-statistic: 3.464 on 13 and 66 DF,  p-value: 0.0004114
 
 Evaluation
 ----------
@@ -916,9 +916,9 @@ p_val <- bt_promo_coef %>%
 print(p_val)
 ```
 
-    ## [1] 0.2216
+    ## [1] 0.2948
 
-The result shows about 22% chance that promotions have a positive
+The result shows about 29% chance that promotions have a positive
 influence on game attendance, after controlling for month, day of week,
 and daytime of the game.
 
