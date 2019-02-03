@@ -37,7 +37,8 @@ The marketing group likes to use giveaways to drive fan engagement and satisfact
 
 Dataset is from the [Marketing Science](http://www.informit.com/promotions/modeling-techniques-in-predictive-analytics-with-python-141177) book by Thomas Miller. 
 
-For fun, bootstrap regression for the NY Mets and addition teams is available in the Rmarkdown file. Only the LA Dodgers show a measurable impact for bobbleheads when controlling for day of week, month, and daytime of the game. 
+For fun, bootstrap regression for the NY Mets and scaled to additional teams has been added to the end. Only the LA Dodgers show a measurable impact for bobbleheads when controlling for day of week, month, and daytime of the game. 
+
 
 ## Executive Summary
 

@@ -18,8 +18,8 @@ Dataset is from the [Marketing
 Science](http://www.informit.com/promotions/modeling-techniques-in-predictive-analytics-with-python-141177)
 book by Thomas Miller.
 
-For fun, bootstrap regression for the NY Mets and addition teams is
-available in the Rmarkdown file. Only the LA Dodgers show a measurable
+For fun, bootstrap regression for the NY Mets and scaled to additional
+teams has been added to the end. Only the LA Dodgers show a measurable
 impact for bobbleheads when controlling for day of week, month, and
 daytime of the game.
 
@@ -704,7 +704,7 @@ p_val <- null_distn %>%
 p_val
 ```
 
-    ## [1] 0.0184
+    ## [1] 0.0198
 
 As a simple first step, we will contruct a regression model using month,
 day of week, day time, and promotion as predictors. We can use the
